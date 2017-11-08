@@ -2,6 +2,7 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 
 /**
@@ -35,11 +36,34 @@ public class SQLiteJDBCDriverConnection {
             }
         }
     }
+
+    public static void createNewTable() {
+        // SQLite connection string
+        String url = "jdbc:sqlite:test.sqlite";
+
+        // SQL statement for creating a new table
+        String sql = "CREATE TABLE IF NOT EXISTS train (\n"
+                + "	User_id integer NOT NULL,\n"
+                + "	Item_id integer NOT NULL,\n"
+                + "	Ratings integer NOT NULL\n"
+                + ");";
+        System.out.println("testing 1 2 3");
+
+        try (Connection conn = DriverManager.getConnection(url);
+             Statement stmt = conn.createStatement()) {
+            // create a new table
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
         connect();
+        createNewTable();
     }
 }
 
