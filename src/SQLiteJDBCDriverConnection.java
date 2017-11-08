@@ -42,17 +42,33 @@ public class SQLiteJDBCDriverConnection {
         String url = "jdbc:sqlite:test.sqlite";
 
         // SQL statement for creating a new table
-        String sql = "CREATE TABLE IF NOT EXISTS train (\n"
+        String sqltable1 = "CREATE TABLE IF NOT EXISTS train (\n"
                 + "	User_id integer NOT NULL,\n"
                 + "	Item_id integer NOT NULL,\n"
                 + "	Ratings integer NOT NULL\n"
                 + ");";
+
+
         System.out.println("testing 1 2 3");
+
+        String sqltable2 = "CREATE TABLE IF NOT EXISTS average (\n"
+                + "	User_id integer NOT NULL,\n"
+                + "	Average_Ratings float(8) NOT NULL\n"
+                + ");";
+
+        System.out.println("testing 4 5 6");
+        try (Connection conn = DriverManager.getConnection(url);
+             Statement stmt = conn.createStatement()) {
+            // create a new table
+            stmt.execute(sqltable1);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
 
         try (Connection conn = DriverManager.getConnection(url);
              Statement stmt = conn.createStatement()) {
             // create a new table
-            stmt.execute(sql);
+            stmt.execute(sqltable2);
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
