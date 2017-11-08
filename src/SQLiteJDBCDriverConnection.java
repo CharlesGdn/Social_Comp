@@ -15,9 +15,12 @@ public class SQLiteJDBCDriverConnection {
             // db parameters
             String url = "jdbc:sqlite:comp3208-2017-train.sqlite";
             String urldb = "jdbc:sqlite:test.sqlite";
+            String url2 = "jdbc:sqlite:MyData.sqlite";
             // create a connection to the database
             conn = DriverManager.getConnection(url);
             conn = DriverManager.getConnection(urldb);
+            conn = DriverManager.getConnection(url2);
+
             System.out.println("Connection to SQLite has been established.");
 
         } catch (SQLException e) {
