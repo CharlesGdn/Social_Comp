@@ -22,7 +22,7 @@ public class SQLiteJDBCDriverConnection {
             conn = DriverManager.getConnection(urldb);
             conn = DriverManager.getConnection(url2);
 
-            System.out.println("Connection to SQLite has been established.");
+            
 
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -32,7 +32,7 @@ public class SQLiteJDBCDriverConnection {
                     conn.close();
                 }
             } catch (SQLException ex) {
-                System.out.println(ex.getMessage());
+                System.err.println(ex.getMessage());
             }
         }
     }
