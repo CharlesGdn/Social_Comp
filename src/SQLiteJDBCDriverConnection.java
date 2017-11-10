@@ -1,8 +1,5 @@
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 
 /**
@@ -42,7 +39,7 @@ public class SQLiteJDBCDriverConnection {
         String url = "jdbc:sqlite:test.sqlite";
 
         // SQL statement for creating a new table
-        String sqltable1 = "CREATE TABLE IF NOT EXISTS train (\n"
+        String sqltable1 = "CREATE TABLE IF NOT EXISTS ratings (\n"
                 + "	User_id integer NOT NULL,\n"
                 + "	Item_id integer NOT NULL,\n"
                 + "	Ratings integer NOT NULL\n"
@@ -51,7 +48,7 @@ public class SQLiteJDBCDriverConnection {
 
         System.out.println("testing 1 2 3");
 
-        String sqltable2 = "CREATE TABLE IF NOT EXISTS average (\n"
+        String sqltable2 = "CREATE TABLE IF NOT EXISTS averages (\n"
                 + "	User_id integer NOT NULL,\n"
                 + "	Average_Ratings float(8) NOT NULL\n"
                 + ");";
@@ -74,12 +71,52 @@ public class SQLiteJDBCDriverConnection {
         }
     }
 
+    public static void query(int n, int i, int j) {
+        String url = "jdbc:sqlite:test.sqlite";
+
+        String sqlItemI = "SELECT Ratings FROM ratings WHERE User_id = " + n + " AND Item_id = " + i;
+        String sqlItemJ = "SELECT Ratings FROM ratings WHERE User_id = " + n + " AND Item_id = " + j;
+        String sqlAvg = "SELECT Average_Ratings FROM averages WHERE User_id = " + n;
+
+        String sqlTop = "SELECT SUM (*) FROM ( " +
+                    "SELECT * FROM (" +
+                        "(" + sqlItemI + " - " + sqlAvg + ") * (" + sqlItemJ + " - " + sqlAvg + "))" +
+	                ")" +
+            ")";
+
+        String sqlSqrI = "SELECT SUM (squares) FROM (" +
+                    "SELECT rating AS squares FROM (" +
+                        "SQUARE(" + sqlItemI + " - " + sqlAvg + ")" +
+                    ")" +
+            ")";
+
+        String sqlSqrJ = "SELECT SUM (squares) FROM (" +
+                    "SELECT rating AS squares FROM (" +
+                        "SQUARE(" + sqlItemJ + " - " + sqlAvg + ")" +
+                    ")" +
+            ")";
+
+        String sqlBottom = "SQRT(" + sqlSqrI + ") * SQRT(" + sqlSqrJ + ")";
+
+        String sqlSim = sqlTop + " / " + sqlBottom;
+
+        try (Connection conn = DriverManager.getConnection(url);
+             Statement stmt = conn.createStatement()) {
+            // query the table
+            ResultSet results = stmt.executeQuery(sqlSim);
+            System.out.println("Executed successfully");
+        } catch (SQLException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
         connect();
         createNewTable();
+        query(1, 2, 3);
     }
 }
 
