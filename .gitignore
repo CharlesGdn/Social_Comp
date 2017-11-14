@@ -11,6 +11,9 @@ test*
 
 //Ignore objects
 out/
+*.csv
+*.sqlite
+*.sqlite*
 
 //Ignore coding env folder
 .idea/
