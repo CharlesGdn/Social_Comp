@@ -4,8 +4,13 @@ comp3208-2017-train.csv
 MyData.csv
 MyData.sqlite
 
+Social
+
 //Ignore all test
 test*
 
 //Ignore objects
 out/
+
+//Ignore coding env folder
+.idea/
