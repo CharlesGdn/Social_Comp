@@ -76,6 +76,35 @@ public class SQLiteJDBCDriverConnection {
         }
     }
 
+    public static void populate(){
+        try {
+            System.out.println("pop");
+            Connection conn = DriverManager.getConnection("jdbc:sqlite:test.sqlite");
+
+            BufferedReader br = new BufferedReader(new FileReader("MyData.csv"));
+            // Statement stat = conn.createStatement();
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",");    //your seperator
+                System.out.println("strings: " + values[0] + " second: " + values[1]);
+                //Convert String to right type. Integer, double, date etc.
+                PreparedStatement prep = conn.prepareStatement("INSERT INTO average values(?,?);");
+                int valOne = Integer.parseInt(values[0]);
+                float valTwo = Float.parseFloat(values[1]);
+                System.out.println("int: " + valOne + " floaut: " + valTwo);
+                prep.setInt(1,valOne);
+                prep.setFloat(2, valTwo);
+                prep.execute();
+            }
+            br.close();
+        } catch (SQLException e){
+            System.err.println("SQL exception with import");
+        } catch (IOException io){
+            System.err.println("IO exception with import");
+        }
+    }
+
+
     public static void populateBig(){
         try {
             System.out.println("populating big");
@@ -91,12 +120,13 @@ public class SQLiteJDBCDriverConnection {
                 PreparedStatement prep = conn.prepareStatement("INSERT INTO train values(?,?,?);");
                 int valOne = Integer.parseInt(values[0]);
                 int valTwo = Integer.parseInt(values[1]);
-                int valThree = Integer.parseInt(values[2]);
+                //int valThree = Integer.parseInt(values[2]);
+                float valThree = Float.parseFloat(values[2]);
 
                 System.out.println("intuser: " + valOne + " intItem: " + valTwo + " intRating " + valThree);
                 prep.setInt(1,valOne);
                 prep.setInt(2, valTwo);
-                prep.setInt(3, valThree);
+                prep.setFloat(3, valThree);
                 prep.execute();
             }
             br.close();
@@ -113,6 +143,7 @@ public class SQLiteJDBCDriverConnection {
     public static void main(String[] args) {
         connect();
         createNewTable();
+        //populate();
         populateBig();
     }
 }
