@@ -1,5 +1,10 @@
 
+import javafx.util.Pair;
+
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 
 /**
@@ -39,21 +44,17 @@ public class SQLiteJDBCDriverConnection {
         String url = "jdbc:sqlite:test.sqlite";
 
         // SQL statement for creating a new table
-        String sqltable1 = "CREATE TABLE IF NOT EXISTS ratings (\n"
-                + "	User_id integer NOT NULL,\n"
-                + "	Item_id integer NOT NULL,\n"
-                + "	Ratings integer NOT NULL\n"
+        String sqltable1 = "CREATE TABLE IF NOT EXISTS ratings ("
+                + "User_id integer NOT NULL, "
+                + "Item_id integer NOT NULL, "
+                + "Ratings integer NOT NULL"
                 + ");";
-
-
-        System.out.println("testing 1 2 3");
 
         String sqltable2 = "CREATE TABLE IF NOT EXISTS averages (\n"
                 + "	User_id integer NOT NULL,\n"
                 + "	Average_Ratings float(8) NOT NULL\n"
                 + ");";
 
-        System.out.println("testing 4 5 6");
         try (Connection conn = DriverManager.getConnection(url);
              Statement stmt = conn.createStatement()) {
             // create a new table
@@ -71,42 +72,76 @@ public class SQLiteJDBCDriverConnection {
         }
     }
 
-    public static void query(int n, int i, int j) {
+    public static void query() {
         String url = "jdbc:sqlite:test.sqlite";
 
-        String sqlItemI = "SELECT Ratings FROM ratings WHERE User_id = " + n + " AND Item_id = " + i;
-        String sqlItemJ = "SELECT Ratings FROM ratings WHERE User_id = " + n + " AND Item_id = " + j;
-        String sqlAvg = "SELECT Average_Ratings FROM averages WHERE User_id = " + n;
-
-        String sqlTop = "SELECT SUM (*) FROM ( " +
-                    "SELECT * FROM (" +
-                        "(" + sqlItemI + " - " + sqlAvg + ") * (" + sqlItemJ + " - " + sqlAvg + "))" +
-	                ")" +
-            ")";
-
-        String sqlSqrI = "SELECT SUM (squares) FROM (" +
-                    "SELECT rating AS squares FROM (" +
-                        "SQUARE(" + sqlItemI + " - " + sqlAvg + ")" +
-                    ")" +
-            ")";
-
-        String sqlSqrJ = "SELECT SUM (squares) FROM (" +
-                    "SELECT rating AS squares FROM (" +
-                        "SQUARE(" + sqlItemJ + " - " + sqlAvg + ")" +
-                    ")" +
-            ")";
-
-        String sqlBottom = "SQRT(" + sqlSqrI + ") * SQRT(" + sqlSqrJ + ")";
-
-        String sqlSim = sqlTop + " / " + sqlBottom;
+        Map<Pair<Integer, Integer>, Float> simMatrix = new HashMap<Pair<Integer, Integer>, Float>();
 
         try (Connection conn = DriverManager.getConnection(url);
              Statement stmt = conn.createStatement()) {
-            // query the table
-            ResultSet results = stmt.executeQuery(sqlSim);
-            System.out.println("Executed successfully");
+
+            for(int i=1; i<4; i++) {
+                for(int j=1; j<=i; j++) {
+
+                    float topSum = 0;
+                    float iSquareSum = 0;
+                    float jSquareSum = 0;
+
+                    for(int n=1; n<3; n++) {
+                        topSum += stmt.executeQuery("SELECT ratingI * ratingJ FROM "
+                                + "(SELECT ratings.Ratings - averages.Average_Ratings AS ratingI FROM ratings, averages WHERE ratings.User_id = " + n + " AND ratings.Item_id = " + i + " AND averages.User_id = " + n + "), "
+                                + "(SELECT ratings.Ratings - averages.Average_Ratings AS ratingJ FROM ratings, averages WHERE ratings.User_id = " + n + " AND ratings.Item_id = " + j + " AND averages.User_id = " + n + ")").getFloat(1);
+
+                        iSquareSum += (float) Math.pow((stmt.executeQuery("SELECT ratings.Ratings - averages.Average_Ratings FROM ratings, averages WHERE ratings.User_id = " + n + " AND ratings.Item_id = " + i + " AND averages.User_id = " + n).getDouble(1)), 2);
+                        jSquareSum += (float) Math.pow((stmt.executeQuery("SELECT ratings.Ratings - averages.Average_Ratings FROM ratings, averages WHERE ratings.User_id = " + n + " AND ratings.Item_id = " + j + " AND averages.User_id = " + n).getDouble(1)), 2);
+                    }
+
+                    float bottom = (float) (Math.sqrt((double) iSquareSum) * (Math.sqrt((double) jSquareSum)));
+                    float similarity = topSum / bottom;
+
+                    if(Double.isNaN(similarity)) {
+                        simMatrix.put(new Pair(i, j), (float) 0);
+                    } else { simMatrix.put(new Pair(i, j), similarity); }
+                }
+            }
         } catch (SQLException e) {
-            System.err.println(e.getMessage());
+            System.out.println(e.getMessage());
+        }
+
+        for(Pair<Integer, Integer> key : simMatrix.keySet()) {
+            System.out.println("Sim(" + key.getKey() + "," + key.getValue() + ") = " + simMatrix.get(key));
+        }
+    }
+
+    public static void populateDB() {
+        String url = "jdbc:sqlite:test.sqlite";
+
+        ArrayList<String> queries = new ArrayList<String>();
+        ArrayList<String> averages = new ArrayList<String>();
+
+        queries.add("INSERT INTO ratings VALUES (1, 1, 7)");
+        queries.add("INSERT INTO ratings VALUES (1, 2, 4)");
+        queries.add("INSERT INTO ratings VALUES (1, 3, 9)");
+
+        queries.add("INSERT INTO ratings VALUES (2, 1, 6)");
+        queries.add("INSERT INTO ratings VALUES (2, 2, 9)");
+        queries.add("INSERT INTO ratings VALUES (2, 3, 8)");
+
+        averages.add("INSERT INTO averages VALUES (1, 6.6666667)");
+        averages.add("INSERT INTO averages VALUES (2, 7.6666667)");
+
+        try (Connection conn = DriverManager.getConnection(url);
+             Statement stmt = conn.createStatement()) {
+
+            for(String query : queries) {
+                stmt.execute(query);
+            }
+
+            for(String avg : averages) {
+                stmt.execute((avg));
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
         }
     }
 
@@ -116,7 +151,8 @@ public class SQLiteJDBCDriverConnection {
     public static void main(String[] args) {
         connect();
         createNewTable();
-        query(1, 2, 3);
+        populateDB();
+        query();
     }
 }
 
