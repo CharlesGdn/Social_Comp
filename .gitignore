@@ -1,0 +1,11 @@
+comp3208-2017-train.sqlite
+comp3208-2017-train.csv
+
+MyData.csv
+MyData.sqlite
+
+//Ignore all test
+test*
+
+//Ignore objects
+out/

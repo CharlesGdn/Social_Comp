@@ -1,0 +1,6 @@
+sqlite3 comp3208-2017-train.sqlite
+//SQLite version 3.11.0 2016-02-15 17:29:24
+//Enter ".help" for usage hints.
+sqlite> .mode csv
+sqlite> .import comp3208-2017-train.csv mytable
+sqlite> .exit
