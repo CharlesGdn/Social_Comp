@@ -58,6 +58,7 @@ public class SQLiteJDBCDriverConnection {
         try (Connection conn = DriverManager.getConnection(url);
              Statement stmt = conn.createStatement()) {
             // create a new table
+            stmt.execute("DROP TABLE IF EXISTS ratings");
             stmt.execute(sqltable1);
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -66,6 +67,7 @@ public class SQLiteJDBCDriverConnection {
         try (Connection conn = DriverManager.getConnection(url);
              Statement stmt = conn.createStatement()) {
             // create a new table
+            stmt.execute("DROP TABLE IF EXISTS averages");
             stmt.execute(sqltable2);
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -151,7 +153,7 @@ public class SQLiteJDBCDriverConnection {
     public static void main(String[] args) {
         connect();
         createNewTable();
-        populateDB();
+        populateDB(); //populates the DB with generic data; used for debugging
         query();
     }
 }
