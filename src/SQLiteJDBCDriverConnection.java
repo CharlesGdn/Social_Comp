@@ -1,9 +1,14 @@
 
 import javafx.util.Pair;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 
@@ -82,16 +87,25 @@ public class SQLiteJDBCDriverConnection {
         try (Connection conn = DriverManager.getConnection(url);
              Statement stmt = conn.createStatement()) {
 
+            int maxUsr, minUsr;
+            int maxItm, minItm;
+
+            minUsr = stmt.executeQuery("SELECT MIN (User_id) FROM ratings").getInt(1);
+            maxUsr = stmt.executeQuery("SELECT MAX (User_id) FROM ratings").getInt(1);
+
+            minItm = stmt.executeQuery("SELECT MIN (Item_id) FROM ratings").getInt(1);
+            maxItm = stmt.executeQuery("SELECT MAX (Item_id) FROM ratings").getInt(1);
+
             //Loop through every item
-            for(int i=stmt.executeQuery("SELECT MIN (Item_id) FROM ratings").getInt(1); i<=stmt.executeQuery("SELECT MAX (Item_id) FROM ratings").getInt(1); i++) {
-                for(int j=stmt.executeQuery("SELECT MIN (Item_id) FROM ratings").getInt(1); j<=i; j++) {
+            for(int i=minItm; i<=maxItm; i++) {
+                for(int j=minItm; j<=maxItm; j++) {
 
                     float topSum = 0;       //Because the top of the formula is a sum
                     float iSquareSum = 0;   //Because the bottom of the formula sums all (Item 'i' ratings)^2
                     float jSquareSum = 0;   //Because the bottom of the formula sums all (Item 'j' ratings)^2
 
                     //Work out the sums
-                    for(int n=stmt.executeQuery("SELECT MIN (User_id) FROM ratings").getInt(1); n<=stmt.executeQuery("SELECT MAX (User_id) FROM ratings").getInt(1); n++) {
+                    for(int n=minUsr; n<=maxUsr; n++) {
                         topSum += stmt.executeQuery("SELECT ratingI * ratingJ FROM "
                                 + "(SELECT ratings.Ratings - averages.Average_Ratings AS ratingI FROM ratings, averages WHERE ratings.User_id = " + n + " AND ratings.Item_id = " + i + " AND averages.User_id = " + n + "), "
                                 + "(SELECT ratings.Ratings - averages.Average_Ratings AS ratingJ FROM ratings, averages WHERE ratings.User_id = " + n + " AND ratings.Item_id = " + j + " AND averages.User_id = " + n + ")").getFloat(1);
@@ -105,7 +119,7 @@ public class SQLiteJDBCDriverConnection {
                     float similarity = topSum / bottom;
 
                     //Save the similarity or 0 in the matrix
-                    if(Double.isNaN(similarity)) {
+                    if(Float.isNaN(similarity)) {
                         simMatrix.put(new Pair(i, j), (float) 0);
                     } else { simMatrix.put(new Pair(i, j), similarity); }
                 }
@@ -114,47 +128,93 @@ public class SQLiteJDBCDriverConnection {
             System.out.println(e.getMessage());
         }
 
+        System.out.println("Similarity Matrix computed");
         return simMatrix;
     }
 
-    public static void calculatePredictions(Map simMatrix) {
+    public static Map calculatePredictions(Map simMatrix) {
         String url = "jdbc:sqlite:test.sqlite";
 
         //{user_id -> item_id} -> prediction
-        Map<Pair<Integer, Integer>, Float> predictions = new HashMap<>();
+        Map<Pair<Integer, Integer>, Float> predictions = new LinkedHashMap<>();
 
         try (Connection conn = DriverManager.getConnection(url);
             Statement stmt = conn.createStatement()) {
 
+            int maxUsr, minUsr;
+            int maxItm, minItm;
+
+            minUsr = stmt.executeQuery("SELECT MIN (User_id) FROM ratings").getInt(1);
+            maxUsr = stmt.executeQuery("SELECT MAX (User_id) FROM ratings").getInt(1);
+
+            minItm = stmt.executeQuery("SELECT MIN (Item_id) FROM ratings").getInt(1);
+            maxItm = stmt.executeQuery("SELECT MAX (Item_id) FROM ratings").getInt(1);
+
+            System.out.println("minUsr= " + minUsr + "; maxUsr= " + maxUsr + "; minItm= " + minItm + "; maxItm= " + maxItm + ". \n");
+
             //Loop through every item for every user in turn
-            for(int n=stmt.executeQuery("SELECT MIN (User_id) FROM ratings").getInt(1); n<=stmt.executeQuery("SELECT MAX (User_id) FROM ratings").getInt(1); n++) {
-                for(int i=stmt.executeQuery("SELECT MIN (Item_id) FROM ratings").getInt(1); i<=stmt.executeQuery("SELECT MAX (Item_id) FROM ratings").getInt(1); i++) {
+            for(int n=minUsr; n<=maxUsr; n++) {
+                for(int i=minItm; i<=maxItm; i++) {
 
                     float topSum = 0;
                     float bottomSum = 0;
 
-                    for (int j = stmt.executeQuery("SELECT MIN (Item_id) FROM ratings").getInt(1); j <= i; j++) {
-                        topSum += (((float) simMatrix.get(new Pair(i, j))) * stmt.executeQuery("SELECT Ratings from ratings WHERE User_id = " + n + " AND Item_id = " + j).getFloat(1));
-                        bottomSum += (float) simMatrix.get(new Pair(i, j));
+                    //sum up the similarity between the item in question and every other item
+                    for (int j = minItm; j <= maxItm; j++) {
+
+                        float similarity = (float) simMatrix.get(new Pair(i, j));
+                        float userRating = stmt.executeQuery("SELECT Ratings from ratings WHERE User_id = " + n + " AND Item_id = " + j).getFloat(1);
+
+                        topSum += (similarity * userRating);
+                        bottomSum += similarity;
                     }
 
                     float prediction = topSum/bottomSum;
 
-                    if(Double.isNaN(prediction)) {
+                    if(Float.isNaN(prediction)) {
                         predictions.put(new Pair(n, i), (float) 0);
                     } else { predictions.put(new Pair(n, i), topSum/bottomSum); }
+
+                    System.out.println("Calculated Pred(" + n + "," + i + ")");
                 }
             }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+
+        System.out.println("Predictions computed");
+        return predictions;
+    }
+
+    public static void outputToCSV(Map preds) throws FileNotFoundException {
+
+        System.out.println();
+
+        Map<Pair<Integer, Integer>, Float> predictions = preds;
+
+        PrintWriter writer = new PrintWriter(new File("predictions.csv"));
+        StringBuilder builder = new StringBuilder();
+
+        for(Pair<Integer, Integer> key : predictions.keySet()) {
+            builder.append(key.getKey().toString());
+            builder.append(',');
+            builder.append(key.getValue().toString());
+            builder.append(',');
+            builder.append(predictions.get(key).toString());
+            builder.append('\n');
+        }
+
+        writer.write(builder.toString());
+        writer.close();
+
+        System.out.println("Predictions saved");
     }
 
     public static void populateDB() {
         String url = "jdbc:sqlite:test.sqlite";
 
-        ArrayList<String> queries = new ArrayList<String>();
-        ArrayList<String> averages = new ArrayList<String>();
+        ArrayList<String> queries = new ArrayList<>();
+        ArrayList<String> averages = new ArrayList<>();
 
         queries.add("INSERT INTO ratings VALUES (1, 1, 7)");
         queries.add("INSERT INTO ratings VALUES (1, 2, 4)");
@@ -189,7 +249,12 @@ public class SQLiteJDBCDriverConnection {
         connect();
         createNewTable();
         populateDB(); //populates the DB with generic data; used for debugging
-        calculatePredictions(calculateSimilarityMatrix());
+        try {
+            outputToCSV(calculatePredictions(calculateSimilarityMatrix()));
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found. See below: \n");
+            System.err.println(e.getMessage());
+        }
     }
 }
 
